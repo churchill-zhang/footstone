@@ -9,7 +9,7 @@
 #include <cstdint>
 #include <limits>
 
-namespace tdf {
+namespace footstone {
 namespace detail {
 
 template <std::size_t Bytes>
@@ -267,4 +267,4 @@ class mpmc_list {
   }
 };
 
-}  // namespace tdf
+}  // namespace footstone

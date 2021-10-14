@@ -9,7 +9,7 @@
 #include <string>
 #include <thread>
 
-namespace tdf {
+namespace footstone {
 namespace base {
 
 Thread::Thread(const std::string& name) {
@@ -21,7 +21,11 @@ Thread::Thread(const std::string& name) {
 
 Thread::~Thread() {}
 
-void Thread::Join() { thread_->join(); }
+void Thread::Join() {
+  if (thread_->joinable()) {
+    thread_->join();
+  }
+}
 
 // The information on how to set the thread name comes from
 // a MSDN article: http://msdn2.microsoft.com/en-us/library/xcb2z8hs.aspx
@@ -45,9 +49,10 @@ void Thread::SetCurrentThreadName(const std::string& name) {
   info.dwFlags = 0;
   __try {
     RaiseException(kVCThreadNameException, 0, sizeof(info) / sizeof(DWORD),
-                   reinterpret_cast<DWORD_PTR*>(&info));
-  } __except (EXCEPTION_CONTINUE_EXECUTION) {  // NOLINT
+      reinterpret_cast<DWORD_PTR*>(&info));
+  }
+  __except (EXCEPTION_CONTINUE_EXECUTION) {  // NOLINT
   }
 }
 }  // namespace base
-}  // namespace tdf
+}  // namespace footstone

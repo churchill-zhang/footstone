@@ -15,7 +15,7 @@
 
 #include "spsc_queue.h"
 
-namespace tdf {
+namespace footstone {
 
 constexpr uint64_t invalid_index = std::numeric_limits<std::uint64_t>::max();
 
@@ -141,4 +141,4 @@ class mpmc_queue : public spsc_queue<rnode<T>, U> {
   std::atomic<U> flag_{0};
 };
 
-}  // namespace tdf
+}  // namespace footstone

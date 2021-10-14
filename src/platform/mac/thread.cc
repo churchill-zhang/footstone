@@ -9,19 +9,25 @@
 #include <string>
 #include <thread>
 
-namespace tdf {
+namespace footstone {
 namespace base {
 
-Thread::Thread(const std::string& name) {
-  thread_ = std::make_unique<std::thread>([this, name]() mutable -> void {
-    SetCurrentThreadName(name);
+Thread::Thread(const std::string& name): name_(name) {}
+
+void Thread::Start() {
+  thread_ = std::make_unique<std::thread>([this]() -> void {
+    SetCurrentThreadName(name_);
     Run();
   });
 }
 
 Thread::~Thread() {}
 
-void Thread::Join() { thread_->join(); }
+void Thread::Join() {
+  if (thread_->joinable()) {
+    thread_->join();
+  }
+}
 
 void Thread::SetCurrentThreadName(const std::string& name) {
   if (name == "") {
@@ -31,4 +37,4 @@ void Thread::SetCurrentThreadName(const std::string& name) {
   pthread_setname_np(name.c_str());
 }
 }  // namespace base
-}  // namespace tdf
+}  // namespace footstone

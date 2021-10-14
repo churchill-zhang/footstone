@@ -12,7 +12,7 @@
 #include <tuple>
 #include <utility>
 
-namespace tdf {
+namespace footstone {
 /**
  * @brief 单生产者单消费者无锁队列（环队列）
  * @param T 队列元素的类型
@@ -95,4 +95,4 @@ class spsc_queue {
   std::atomic<U> head_{0};
 };
 
-}  // namespace tdf
+}  // namespace footstone

@@ -2,8 +2,8 @@
 
 #include "base/log_settings.h"
 
-namespace tdf {
+namespace footstone {
 namespace base {
 LogSettings global_log_settings;
 }  // namespace base
-}  // namespace tdf
+}  // namespace footstone

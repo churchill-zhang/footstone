@@ -1,4 +1,7 @@
-// Copyright (c) 2020 The tencent Authors. All rights reserved.
+//
+// Copyright (c) Tencent Corporation. All rights reserved.
+//
+
 #pragma once
 #include <atomic>
 #include <future>
@@ -8,7 +11,7 @@
 
 #include "macros.h"
 
-namespace tdf {
+namespace footstone {
 namespace base {
 
 class Thread {
@@ -17,6 +20,8 @@ class Thread {
 
   ~Thread();
 
+  void Start();
+
   void Join();
 
   static void SetCurrentThreadName(const std::string& name);
@@ -24,10 +29,11 @@ class Thread {
   virtual void Run() = 0;
 
  private:
+  std::string name_;
   std::unique_ptr<std::thread> thread_;
 
   TDF_BASE_DISALLOW_COPY_AND_ASSIGN(Thread);
 };
 
 }  // namespace base
-}  // namespace tdf
+}  // namespace footstone

@@ -6,15 +6,13 @@
 #include <memory>
 #include "task.h"
 
-namespace tdf {
-namespace tdf {
+namespace footstone {
 namespace base {
 class Profile {
  public:
   virtual std::unique_ptr<Task> GetNextTask() = 0;
 };
 }  // namespace base
-}  // namespace tdf
-}  // namespace tdf
+}  // namespace footstone
 
 #endif  // TDF_BASE_INCLUDE_PROFILE_H_

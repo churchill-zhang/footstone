@@ -7,7 +7,7 @@
 #include <functional>
 
 #include "macros.h"
-namespace tdf {
+namespace footstone {
 namespace base {
 
 using closure = std::function<void()>;
@@ -59,4 +59,4 @@ class ScopedCleanupClosure {
 };
 
 }  // namespace base
-}  // namespace tdf
+}  // namespace footstone

@@ -1,4 +1,7 @@
-// Copyright (c) 2020 The tencent Authors. All rights reserved.
+//
+// Copyright (c) Tencent Corporation. All rights reserved.
+//
+
 #pragma once
 
 #include <condition_variable>

@@ -10,7 +10,7 @@
 
 #include "base/logging.h"
 
-namespace tdf {
+namespace footstone {
 namespace base {
 extern LogSettings global_log_settings;
 
@@ -24,4 +24,4 @@ LogSettings GetLogSettings() { return global_log_settings; }
 int GetMinLogLevel() { return std::min(global_log_settings.min_log_level, TDF_LOG_FATAL); }
 
 }  // namespace base
-}  // namespace tdf
+}  // namespace footstone

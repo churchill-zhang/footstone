@@ -1,9 +1,12 @@
-// Copyright (c) 2020 The tencent Authors. All rights reserved.
+//
+// Copyright (c) Tencent Corporation. All rights reserved.
+//
+
 #pragma once
 
 #include <mutex>
 #include <queue>
-namespace tdf {
+namespace footstone {
 namespace core {
 
 // 基础库，根据腾讯C++代码规范7.10，使用stl命名规范
@@ -70,4 +73,4 @@ class thread_safe_queue {
 };
 
 }  // namespace core
-}  // namespace tdf
+}  // namespace footstone

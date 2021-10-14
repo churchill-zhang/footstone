@@ -9,8 +9,9 @@
 
 #include "base/log_settings.h"
 
-namespace tdf {
+namespace footstone {
 namespace base {
+
 namespace {
 
 const char* const kLogSeverityNames[TDF_LOG_NUM_SEVERITIES] = {"INFO", "WARNING", "ERROR", "FATAL"};
@@ -36,6 +37,32 @@ const char* StripPath(const char* path) {
 
 }  // namespace
 
+std::function<void(const std::ostringstream&, LogSeverity severity)> LogMessage::delegate_ =
+    [](const std::ostringstream& stream, LogSeverity severity) {
+      android_LogPriority priority = (severity < 0) ? ANDROID_LOG_VERBOSE : ANDROID_LOG_UNKNOWN;
+      switch (severity) {
+        case TDF_LOG_INFO:
+          priority = ANDROID_LOG_INFO;
+          break;
+        case TDF_LOG_WARNING:
+          priority = ANDROID_LOG_WARN;
+          break;
+        case TDF_LOG_ERROR:
+          priority = ANDROID_LOG_ERROR;
+          break;
+        case TDF_LOG_FATAL:
+          priority = ANDROID_LOG_FATAL;
+          break;
+        case TDF_LOG_NUM_SEVERITIES:
+          break;
+      }
+      __android_log_write(priority, "tdf", stream.str().c_str());
+
+      if (severity >= TDF_LOG_FATAL) {
+        abort();
+      }
+    };
+
 LogMessage::LogMessage(LogSeverity severity, const char* file, int line, const char* condition)
     : severity_(severity), file_(file), line_(line) {
   stream_ << "[";
@@ -52,25 +79,8 @@ LogMessage::LogMessage(LogSeverity severity, const char* file, int line, const c
 LogMessage::~LogMessage() {
   stream_ << std::endl;
 
-  android_LogPriority priority = (severity_ < 0) ? ANDROID_LOG_VERBOSE : ANDROID_LOG_UNKNOWN;
-  switch (severity_) {
-    case TDF_LOG_INFO:
-      priority = ANDROID_LOG_INFO;
-      break;
-    case TDF_LOG_WARNING:
-      priority = ANDROID_LOG_WARN;
-      break;
-    case TDF_LOG_ERROR:
-      priority = ANDROID_LOG_ERROR;
-      break;
-    case TDF_LOG_FATAL:
-      priority = ANDROID_LOG_FATAL;
-      break;
-  }
-  __android_log_write(priority, "tdf", stream_.str().c_str());
-
-  if (severity_ >= TDF_LOG_FATAL) {
-    abort();
+  if (delegate_) {
+    delegate_(stream_, severity_);
   }
 }
 
@@ -79,4 +89,4 @@ int GetVlogVerbosity() { return std::max(-1, TDF_LOG_INFO - GetMinLogLevel()); }
 bool ShouldCreateLogMessage(LogSeverity severity) { return severity >= GetMinLogLevel(); }
 
 }  // namespace base
-}  // namespace tdf
+}  // namespace footstone

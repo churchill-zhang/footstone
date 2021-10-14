@@ -1,9 +1,8 @@
-// Copyright (c) 2020 Tencent Corporation. All rights reserved.
 //
-// Created by willisdai on 4/7/21.
+// Copyright (c) Tencent Corporation. All rights reserved.
 //
 #include "base/base64.h"
-namespace tdf {
+namespace footstone {
 std::string Base64::Encode(const uint8_t *bin, const size_t len) {
   static constexpr char kEncodingTable[] = {
       'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
@@ -40,7 +39,7 @@ std::string Base64::Encode(const uint8_t *bin, const size_t len) {
     }
     ret[out_idx] = '=';
   }
-  return std::move(ret);
+  return ret;
 }
 
 std::string Base64::Decode(const std::string &input) {
@@ -82,6 +81,6 @@ std::string Base64::Decode(const std::string &input) {
     if (j < out_len) out[j++] = (triple >> 1 * 8) & 0xFF;
     if (j < out_len) out[j++] = (triple >> 0 * 8) & 0xFF;
   }
-  return std::move(out);
+  return out;
 }
-}  // namespace tdf
+}  // namespace footstone

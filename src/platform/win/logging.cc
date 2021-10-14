@@ -2,20 +2,22 @@
 
 #include "base/logging.h"
 
+#include <string.h>
 #include <algorithm>
 #include <iostream>
 
 #include "base/log_settings.h"
 
-namespace tdf {
-namespace tdf {
+#define LOG_INFO 6 /*informational*/
+
+namespace footstone {
 namespace base {
 namespace {
 
-const char* const kLogSeverityNames[LOG_NUM_SEVERITIES] = {"INFO", "WARNING", "ERROR", "FATAL"};
+const char* const kLogSeverityNames[TDF_LOG_NUM_SEVERITIES] = {"INFO", "WARNING", "ERROR", "FATAL"};
 
 const char* GetNameForLogSeverity(LogSeverity severity) {
-  if (severity >= LOG_INFO && severity < LOG_NUM_SEVERITIES) return kLogSeverityNames[severity];
+  if (severity >= LOG_INFO && severity < TDF_LOG_NUM_SEVERITIES) return kLogSeverityNames[severity];
   return "UNKNOWN";
 }
 
@@ -53,7 +55,7 @@ LogMessage::~LogMessage() {
   std::cerr << stream_.str();
   std::cerr.flush();
 
-  if (severity_ >= LOG_FATAL) {
+  if (severity_ >= TDF_LOG_FATAL) {
     abort();
   }
 }
@@ -63,5 +65,4 @@ int GetVlogVerbosity() { return std::max(-1, LOG_INFO - GetMinLogLevel()); }
 bool ShouldCreateLogMessage(LogSeverity severity) { return severity >= GetMinLogLevel(); }
 
 }  // namespace base
-}  // namespace tdf
-}  // namespace tdf
+}  // namespace footstone

@@ -6,6 +6,6 @@ elseif (APPLE)
 elseif (ANDROID)
 	add_subdirectory(platform/adr)
 else()
-	message("platform is not supported")
+	add_subdirectory(platform/linux)
 endif()
 
