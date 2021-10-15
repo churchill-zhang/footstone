@@ -137,29 +137,29 @@ class unicode_string_view final {
 }  // namespace footstone
 
 template <>
-struct std::hash<tdf::base::unicode_string_view> {
-  std::size_t operator()(const tdf::base::unicode_string_view& value) const noexcept;
+struct std::hash<footstone::base::unicode_string_view> {
+  std::size_t operator()(const footstone::base::unicode_string_view& value) const noexcept;
 };
 
 #if !defined(__cpp_char8_t) && (defined(__GLIBC__))
 template <>
-struct std::hash<tdf::base::unicode_string_view::u8string>
-  : public std::__hash_base<size_t, tdf::base::unicode_string_view::u8string> {
+struct std::hash<footstone::base::unicode_string_view::u8string>
+  : public std::__hash_base<size_t, footstone::base::unicode_string_view::u8string> {
   std::size_t operator()(
-    const tdf::base::unicode_string_view::u8string& value) const noexcept;
+    const footstone::base::unicode_string_view::u8string& value) const noexcept;
 };
 #endif
 
 inline namespace literals {
 inline namespace string_literals {
-[[nodiscard]] inline constexpr const tdf::base::unicode_string_view::char8_t_* operator"" _u8_ptr(
+[[nodiscard]] inline constexpr const footstone::base::unicode_string_view::char8_t_* operator"" _u8_ptr(
     const u8_type* u8, size_t) {
-  return (tdf::base::unicode_string_view::char8_t_*)u8;
+  return (footstone::base::unicode_string_view::char8_t_*)u8;
 }
 
-[[nodiscard]] inline const tdf::base::unicode_string_view operator"" _u8s(const u8_type* u8,
+[[nodiscard]] inline const footstone::base::unicode_string_view operator"" _u8s(const u8_type* u8,
                                                                           size_t length) {
-  return tdf::base::unicode_string_view::new_from_utf8(u8, length);
+  return footstone::base::unicode_string_view::new_from_utf8(u8, length);
 }
 }  // namespace string_literals
 }  // namespace literals

@@ -5,9 +5,9 @@
 #include "base/logging.h"
 #include "base/worker_pool.h"
 
-using WorkerPool = tdf::base::WorkerPool;
-using TaskRunner = tdf::base::TaskRunner;
-using Task = tdf::base::Task;
+using WorkerPool = footstone::base::WorkerPool;
+using TaskRunner = footstone::base::TaskRunner;
+using Task = footstone::base::Task;
 
 int main() {
   std::shared_ptr<WorkerPool> pool = WorkerPool::GetInstance(3);

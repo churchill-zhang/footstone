@@ -85,33 +85,33 @@ bool ShouldCreateLogMessage(LogSeverity severity);
 }  // namespace footstone
 
 #define TDF_BASE_LOG_STREAM(severity) \
-  ::tdf::base::LogMessage(::tdf::base::LogSeverity::TDF_LOG_##severity, __FILE__, __LINE__, nullptr).stream()
+  ::footstone::base::LogMessage(::footstone::base::LogSeverity::TDF_LOG_##severity, __FILE__, __LINE__, nullptr).stream()
 
 #define TDF_BASE_LAZY_STREAM(stream, condition) \
-  !(condition) ? (void)0 : ::tdf::base::LogMessageVoidify() & (stream)
+  !(condition) ? (void)0 : ::footstone::base::LogMessageVoidify() & (stream)
 
 #define TDF_BASE_EAT_STREAM_PARAMETERS(ignored) \
   true || (ignored)                             \
       ? (void)0                                 \
-      : ::tdf::base::LogMessageVoidify() &      \
-            ::tdf::base::LogMessage(::tdf::base::TDF_LOG_FATAL, 0, 0, nullptr).stream()
+      : ::footstone::base::LogMessageVoidify() &      \
+            ::footstone::base::LogMessage(::footstone::base::TDF_LOG_FATAL, 0, 0, nullptr).stream()
 
 #define TDF_BASE_LOG_IS_ON(severity) \
-  (::tdf::base::ShouldCreateLogMessage(::tdf::base::LogSeverity::TDF_LOG_##severity))
+  (::footstone::base::ShouldCreateLogMessage(::footstone::base::LogSeverity::TDF_LOG_##severity))
 
 #define TDF_BASE_LOG(severity) \
   TDF_BASE_LAZY_STREAM(TDF_BASE_LOG_STREAM(severity), TDF_BASE_LOG_IS_ON(severity))
 
 #define TDF_BASE_CHECK(condition)                                                         \
   TDF_BASE_LAZY_STREAM(                                                                   \
-      ::tdf::base::LogMessage(::tdf::base::TDF_LOG_FATAL, __FILE__, __LINE__, #condition) \
+      ::footstone::base::LogMessage(::footstone::base::TDF_LOG_FATAL, __FILE__, __LINE__, #condition) \
           .stream(),                                                                      \
       !(condition))
 
-#define TDF_BASE_VLOG_IS_ON(verbose_level) ((verbose_level) <= ::tdf::base::GetVlogVerbosity())
+#define TDF_BASE_VLOG_IS_ON(verbose_level) ((verbose_level) <= ::footstone::base::GetVlogVerbosity())
 
 #define TDF_BASE_VLOG_STREAM(verbose_level) \
-  ::tdf::base::LogMessage(-verbose_level, __FILE__, __LINE__, nullptr).stream()
+  ::footstone::base::LogMessage(-verbose_level, __FILE__, __LINE__, nullptr).stream()
 
 #define TDF_BASE_VLOG(verbose_level) \
   TDF_BASE_LAZY_STREAM(TDF_BASE_VLOG_STREAM(verbose_level), TDF_BASE_VLOG_IS_ON(verbose_level))

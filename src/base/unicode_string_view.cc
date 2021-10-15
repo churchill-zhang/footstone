@@ -2,7 +2,7 @@
 
 #include "base/unicode_string_view.h"
 
-using unicode_string_view = tdf::base::unicode_string_view;
+using unicode_string_view = footstone::base::unicode_string_view;
 
 #if defined(__GLIBC__) && !defined(__cpp_char8_t)
 std::size_t std::hash<unicode_string_view::u8string>::operator()(
