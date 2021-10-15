@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
-project(base)
+project(footstone)
 set(CMAKE_CXX_STANDARD 17)
-set(BASE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/base)
+set(BASE_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 set(THIRD_PARTY ${CMAKE_CURRENT_SOURCE_DIR}/third_party) 
 
 include_directories(
