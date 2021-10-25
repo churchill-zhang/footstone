@@ -7,7 +7,6 @@
 #include "macros.h"
 #include "task.h"
 #include "worker.h"
-#include "time.h"
 #include "time_delta.h"
 #include "time_point.h"
 
@@ -17,6 +16,7 @@ inline namespace runner {
 class TaskRunner {
  public:
   using TimePoint = time::TimePoint;
+  using TimeDelta = time::TimeDelta;
 
   explicit TaskRunner(bool is_excl = false, int priority = 1, const std::string& name = "");
   ~TaskRunner();
@@ -38,13 +38,12 @@ class TaskRunner {
   void PostDelayedTask(std::unique_ptr<Task> task, TimeDelta delay);
 
   template <typename F, typename... Args>
-  void PostDelayedTask(F&& f, Duration delay, Args... args) {
+  void PostDelayedTask(F&& f, TimeDelta delay, Args... args) {
     using T = typename std::result_of<F(Args...)>::type;
     auto packaged_task = std::make_shared<std::packaged_task<T()>>(
         std::bind(std::forward<F>(f), std::forward<Args>(args)...));
     auto task = std::make_unique<Task>([packaged_task]() { (*packaged_task)(); });
-    TimeDelta delay_time = TimeDelta::FromNanoseconds(delay.count());
-    PostDelayedTask(std::move(task), delay_time);
+    PostDelayedTask(std::move(task), delay);
   }
   TimeDelta GetNextTimeDelta(TimePoint now);
 

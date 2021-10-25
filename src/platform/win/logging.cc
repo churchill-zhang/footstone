@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <iostream>
 
-#include "base/log_settings.h"
+#include "footstone/log_settings.h"
 
 #define LOG_INFO 6 /*informational*/
 

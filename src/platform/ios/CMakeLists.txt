@@ -1,6 +1,6 @@
 set(LIB_NAME "footstone")
 
-file(GLOB_RECURSE SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/* ${TDF_BASE_SOURCE_DIR}/src/footstone/*)
+file(GLOB_RECURSE SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/* ${FOOTSTONE_PATH}/src/footstone/*)
 
 #set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib/platform/ios)
 add_library(${LIB_NAME} STATIC ${SRC_FILES})

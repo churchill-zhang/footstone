@@ -8,8 +8,6 @@
 #include <algorithm>
 #include <iostream>
 
-#include "base/logging.h"
-
 namespace footstone {
 inline namespace log {
 

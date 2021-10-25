@@ -48,10 +48,6 @@ class TimePoint {
     return TimePoint(ticks_ - duration.ToNanoseconds());
   }
 
-  const TimePoint operator-(TimeDelta duration) const {
-    return TimePoint(ticks_ - duration.ToNanoseconds());
-  }
-
   bool operator==(TimePoint other) const { return ticks_ == other.ticks_; }
   bool operator!=(TimePoint other) const { return ticks_ != other.ticks_; }
   bool operator<(TimePoint other) const { return ticks_ < other.ticks_; }

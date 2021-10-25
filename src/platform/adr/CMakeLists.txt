@@ -1,7 +1,7 @@
 set(LIB_NAME "footstone")
 
-include_directories(${TDF_BASE_SOURCE_DIR})
-file(GLOB_RECURSE SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/* ${TDF_BASE_SOURCE_DIR}/src/footstone/*)
+include_directories(${FOOTSTONE_PATH})
+file(GLOB_RECURSE SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/* ${FOOTSTONE_PATH}/src/footstone/*)
 
 #set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib/platform/adr)
 find_library(ADR_LOG_LIB, log)
