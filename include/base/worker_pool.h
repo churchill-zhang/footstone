@@ -6,7 +6,8 @@
 #include "worker.h"
 
 namespace footstone {
-namespace base {
+inline namespace runner {
+
 class WorkerPool {
  public:
   static std::shared_ptr<WorkerPool> GetInstance(int size);
@@ -39,5 +40,5 @@ class WorkerPool {
   TDF_BASE_DISALLOW_COPY_AND_ASSIGN(WorkerPool);
 };
 
-}  // namespace base
+}  // namespace runner
 }  // namespace footstone

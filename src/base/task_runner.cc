@@ -7,7 +7,7 @@
 #include "base/worker.h"
 
 namespace footstone {
-namespace base {
+inline namespace runner {
 
 std::atomic<int32_t> global_task_runner_id{0};
 
@@ -73,9 +73,7 @@ void TaskRunner::RemoveSubTaskRunner(std::shared_ptr<TaskRunner> sub_runner) {
   }
 }
 
-void TaskRunner::Terminate() {
-  is_terminated_ = true;
-}
+void TaskRunner::Terminate() { is_terminated_ = true; }
 
 void TaskRunner::PostTask(std::unique_ptr<Task> task) {
   std::lock_guard<std::mutex> lock(mutex_);
@@ -229,5 +227,5 @@ void TaskRunner::RunnerDestroySpecifics() {
   }
 }
 
-}  // namespace base
+} // namespace runner
 }  // namespace footstone

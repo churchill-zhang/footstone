@@ -10,7 +10,7 @@
 #include "thread.h"
 
 namespace footstone {
-namespace base {
+inline namespace runner {
 
 class WorkerPool;
 class TaskRunner;
@@ -81,5 +81,6 @@ class Worker : public Thread {
   // debug
   std::string name_;
 };
-}  // namespace base
+
+}  // namespace runner
 }  // namespace footstone

@@ -2,9 +2,11 @@
 
 #include "base/logging.h"
 
-namespace footstone::base {
+namespace footstone {
+inline namespace timer {
 
-OneShotTimer::OneShotTimer(std::shared_ptr<TaskRunner> task_runner) : BaseTimer(task_runner) {}
+OneShotTimer::OneShotTimer(std::shared_ptr<TaskRunner> task_runner)
+    :BaseTimer(task_runner) {}
 
 OneShotTimer::~OneShotTimer() = default;
 
@@ -27,4 +29,6 @@ void OneShotTimer::RunUserTask() {
   TDF_BASE_DCHECK(task);
   std::move(task)->Run();
 }
-}  // namespace footstone::base
+
+} // namespace timer
+} // namespace footstone

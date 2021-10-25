@@ -3,7 +3,9 @@
 #include "base/log_settings.h"
 
 namespace footstone {
-namespace base {
+inline namespace log {
+
 LogSettings global_log_settings;
-}  // namespace base
+
+}  // namespace log
 }  // namespace footstone

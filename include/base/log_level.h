@@ -3,7 +3,7 @@
 #pragma once
 
 namespace footstone {
-namespace base {
+inline namespace log {
 
 enum LogSeverity {
   TDF_LOG_DEBUG,
@@ -28,5 +28,5 @@ constexpr LogSeverity TDF_LOG_DFATAL = TDF_LOG_ERROR;
 constexpr LogSeverity TDF_LOG_DFATAL = TDF_LOG_FATAL;
 #endif
 
-}  // namespace base
+}  // namespace log
 }  // namespace footstone

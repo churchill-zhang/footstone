@@ -10,11 +10,13 @@
 #include <thread>
 
 namespace footstone {
-namespace base {
+inline namespace runner {
 
-Thread::Thread(const std::string& name) {
-  thread_ = std::make_unique<std::thread>([this, name]() mutable -> void {
-    SetCurrentThreadName(name);
+Thread::Thread(const std::string& name) : name_(name) {}
+
+void Thread::Start() {
+  thread_ = std::make_unique<std::thread>([this]() -> void {
+    SetCurrentThreadName(name_);
     Run();
   });
 }
@@ -49,10 +51,10 @@ void Thread::SetCurrentThreadName(const std::string& name) {
   info.dwFlags = 0;
   __try {
     RaiseException(kVCThreadNameException, 0, sizeof(info) / sizeof(DWORD),
-      reinterpret_cast<DWORD_PTR*>(&info));
-  }
-  __except (EXCEPTION_CONTINUE_EXECUTION) {  // NOLINT
+                   reinterpret_cast<DWORD_PTR*>(&info));
+  } __except (EXCEPTION_CONTINUE_EXECUTION) {  // NOLINT
   }
 }
-}  // namespace base
-}  // namespace footstone
+
+} // namespace runner
+} // namespace footstone

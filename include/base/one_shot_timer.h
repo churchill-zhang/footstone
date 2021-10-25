@@ -3,10 +3,14 @@
 #include "base_timer.h"
 
 namespace footstone {
-namespace base {
+inline namespace timer {
 
 class OneShotTimer : public BaseTimer {
  public:
+  using Task = runner::Task;
+  using TaskRunner = runner::TaskRunner;
+  using TimeDelta = time::TimeDelta;
+
   OneShotTimer() = default;
   explicit OneShotTimer(std::shared_ptr<TaskRunner> task_runner);
   virtual ~OneShotTimer();

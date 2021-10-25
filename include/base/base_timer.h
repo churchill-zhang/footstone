@@ -8,10 +8,14 @@
 #include "time_point.h"
 
 namespace footstone {
-namespace base {
+inline namespace timer {
 
 class BaseTimer {
  public:
+  using TaskRunner = runner::TaskRunner;
+  using TimePoint = time::TimePoint;
+  using TimeDelta = time::TimeDelta;
+
   BaseTimer() = default;
   explicit BaseTimer(std::shared_ptr<TaskRunner> task_runner);
   virtual ~BaseTimer();
@@ -43,5 +47,5 @@ class BaseTimer {
   TDF_BASE_DISALLOW_COPY_AND_ASSIGN(BaseTimer);
 };
 
-}  // namespace base
+}  // namespace timer
 }  // namespace footstone

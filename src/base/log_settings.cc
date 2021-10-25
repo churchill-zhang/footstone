@@ -11,7 +11,8 @@
 #include "base/logging.h"
 
 namespace footstone {
-namespace base {
+inline namespace log {
+
 extern LogSettings global_log_settings;
 
 void SetLogSettings(const LogSettings& settings) {
@@ -23,5 +24,5 @@ LogSettings GetLogSettings() { return global_log_settings; }
 
 int GetMinLogLevel() { return std::min(global_log_settings.min_log_level, TDF_LOG_FATAL); }
 
-}  // namespace base
+}  // namespace log
 }  // namespace footstone

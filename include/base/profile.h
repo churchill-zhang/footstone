@@ -1,18 +1,17 @@
 // Copyright (c) 2020 Tencent Corporation. All rights reserved.
 
-#ifndef TDF_BASE_INCLUDE_PROFILE_H_
-#define TDF_BASE_INCLUDE_PROFILE_H_
+#pragma once
 
 #include <memory>
 #include "task.h"
 
 namespace footstone {
-namespace base {
+inline namespace profile {
+
 class Profile {
  public:
   virtual std::unique_ptr<Task> GetNextTask() = 0;
 };
+
 }  // namespace base
 }  // namespace footstone
-
-#endif  // TDF_BASE_INCLUDE_PROFILE_H_

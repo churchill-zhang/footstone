@@ -2,7 +2,7 @@
 
 #include "base/unicode_string_view.h"
 
-using unicode_string_view = footstone::base::unicode_string_view;
+using unicode_string_view = footstone::stringview::unicode_string_view;
 
 #if defined(__GLIBC__) && !defined(__cpp_char8_t)
 std::size_t std::hash<unicode_string_view::u8string>::operator()(
@@ -30,7 +30,7 @@ std::size_t std::hash<unicode_string_view>::operator()(
 }
 
 namespace footstone {
-namespace base {
+inline namespace stringview {
 
 unicode_string_view::unicode_string_view(const unicode_string_view& source)
     : encoding_(source.encoding_) {
@@ -296,5 +296,5 @@ const unicode_string_view::u32string& unicode_string_view::utf32_value() const {
   return u32_string_;
 }
 
-}  // namespace base
-}  // namespace footstone
+} // namespace stringview
+} // namespace footstone

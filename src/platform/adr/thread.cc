@@ -10,9 +10,9 @@
 #include <thread>
 
 namespace footstone {
-namespace base {
+inline namespace runner {
 
-Thread::Thread(const std::string& name): name_(name) {}
+Thread::Thread(const std::string& name) : name_(name) {}
 
 void Thread::Start() {
   thread_ = std::make_unique<std::thread>([this]() -> void {
@@ -35,5 +35,6 @@ void Thread::SetCurrentThreadName(const std::string& name) {
   }
   pthread_setname_np(pthread_self(), name.c_str());
 }
-}  // namespace base
-}  // namespace footstone
+
+} // namespace runner
+} // namespace footstone

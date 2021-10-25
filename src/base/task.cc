@@ -25,7 +25,7 @@
 std::atomic<uint32_t> g_next_task_id{0};
 
 namespace footstone {
-namespace base {
+inline namespace runner {
 
 Task::Task() : Task(nullptr) {}
 
@@ -33,5 +33,5 @@ Task::Task(std::function<void()> exec_unit) : unit_(exec_unit) {
   id_ = g_next_task_id.fetch_add(1);
 }
 
-}  // namespace base
-}  // namespace footstone
+} // namespace runner
+} // namespace footstone

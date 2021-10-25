@@ -8,14 +8,8 @@
 #include "time_delta.h"
 
 namespace footstone {
-namespace base {
+inline namespace time {
 
-// A TimePoint represents a point in time represented as an integer number
-// of nanoseconds elapsed since an arbitrary point in the past.
-//
-// WARNING: This class should not be serialized across reboots, or across
-// devices: the reference point is only stable for a given device between
-// reboots.
 class TimePoint {
  public:
   // Default TimePoint with internal value 0 (epoch).
@@ -42,10 +36,19 @@ class TimePoint {
     return TimeDelta::FromNanoseconds(ticks_ - other.ticks_);
   }
 
-  TimePoint operator+(TimeDelta duration) const {
+  TimePoint operator+(TimeDelta duration) {
     return TimePoint(ticks_ + duration.ToNanoseconds());
   }
+
+  const TimePoint operator+(TimeDelta duration) const {
+    return TimePoint(ticks_ + duration.ToNanoseconds());
+  }
+
   TimePoint operator-(TimeDelta duration) const {
+    return TimePoint(ticks_ - duration.ToNanoseconds());
+  }
+
+  const TimePoint operator-(TimeDelta duration) const {
     return TimePoint(ticks_ - duration.ToNanoseconds());
   }
 
@@ -62,5 +65,5 @@ class TimePoint {
   int64_t ticks_ = 0;
 };
 
-}  // namespace base
+}  // namespace time
 }  // namespace footstone

@@ -10,7 +10,7 @@
 #include "base/log_settings.h"
 
 namespace footstone {
-namespace base {
+inline namespace log {
 
 namespace {
 
@@ -88,5 +88,5 @@ int GetVlogVerbosity() { return std::max(-1, TDF_LOG_INFO - GetMinLogLevel()); }
 
 bool ShouldCreateLogMessage(LogSeverity severity) { return severity >= GetMinLogLevel(); }
 
-}  // namespace base
-}  // namespace footstone
+} // namespace log
+} // namespace footstone

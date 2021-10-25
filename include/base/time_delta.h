@@ -8,7 +8,7 @@
 #include <limits>
 
 namespace footstone {
-namespace base {
+inline namespace time {
 
 using Milliseconds = std::chrono::duration<double, std::milli>;
 
@@ -103,5 +103,5 @@ class TimeDelta {
   int64_t delta_ = 0;
 };
 
-}  // namespace base
+}  // namespace time
 }  // namespace footstone

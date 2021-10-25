@@ -6,7 +6,7 @@
 #include "base/logging.h"
 
 namespace footstone {
-namespace base {
+inline namespace runner {
 
 std::mutex WorkerPool::creation_mutex_;
 
@@ -61,8 +61,7 @@ void WorkerPool::Resize(int size) {
 
     index_ = size_;
     auto it = groups.begin();
-    std::map<int32_t, std::array<Worker::WorkerKey, Worker::kWorkerKeysMax>>
-        migration_key_map;
+    std::map<int32_t, std::array<Worker::WorkerKey, Worker::kWorkerKeysMax>> migration_key_map;
     std::map<int32_t, std::array<void*, Worker::kWorkerKeysMax>> migration_specific_map;
     while (it != groups.end()) {
       auto group = *it;
@@ -174,5 +173,6 @@ void WorkerPool::BindWorker(std::shared_ptr<Worker> worker,
     worker->UpdateSpecific((*it)->GetId(), specific_array);
   }
 }
-}  // namespace base
-}  // namespace footstone
+
+} // namespace runner
+} // namespace footstone

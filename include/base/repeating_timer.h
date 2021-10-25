@@ -3,10 +3,12 @@
 #include "base_timer.h"
 
 namespace footstone {
-namespace base {
+inline namespace timer {
 
 class RepeatingTimer : public BaseTimer {
  public:
+  using TaskRunner = runner::TaskRunner;
+
   RepeatingTimer() = default;
   explicit RepeatingTimer(std::shared_ptr<TaskRunner> task_runner);
   virtual ~RepeatingTimer();

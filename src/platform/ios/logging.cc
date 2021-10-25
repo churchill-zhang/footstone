@@ -10,7 +10,7 @@
 #include "base/log_settings.h"
 
 namespace footstone {
-namespace base {
+inline namespace log {
 namespace {
 
 const char* const kLogSeverityNames[TDF_LOG_NUM_SEVERITIES] = {"INFO", "WARNING", "ERROR", "FATAL"};
@@ -35,13 +35,14 @@ const char* StripPath(const char* path) {
 
 }  // namespace
 
-std::function<void(const std::ostringstream&, LogSeverity)> LogMessage::delegate_ = [](const std::ostringstream& stream, LogSeverity severity) {
-  syslog(LOG_ALERT, "tdf: %s", stream.str().c_str());
+std::function<void(const std::ostringstream&, LogSeverity)> LogMessage::delegate_ =
+    [](const std::ostringstream& stream, LogSeverity severity) {
+      syslog(LOG_ALERT, "tdf: %s", stream.str().c_str());
 
-  if (severity >= TDF_LOG_FATAL) {
-    abort();
-  }
-};
+      if (severity >= TDF_LOG_FATAL) {
+        abort();
+      }
+    };
 
 LogMessage::LogMessage(LogSeverity severity, const char* file, int line, const char* condition)
     : severity_(severity), file_(file), line_(line) {
@@ -69,5 +70,5 @@ int GetVlogVerbosity() { return std::max(-1, LOG_INFO - GetMinLogLevel()); }
 
 bool ShouldCreateLogMessage(LogSeverity severity) { return severity >= GetMinLogLevel(); }
 
-}  // namespace base
-}  // namespace footstone
+} // namespace log
+} // namespace footstone

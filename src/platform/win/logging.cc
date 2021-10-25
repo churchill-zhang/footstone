@@ -11,7 +11,7 @@
 #define LOG_INFO 6 /*informational*/
 
 namespace footstone {
-namespace base {
+inline namespace log {
 namespace {
 
 const char* const kLogSeverityNames[TDF_LOG_NUM_SEVERITIES] = {"INFO", "WARNING", "ERROR", "FATAL"};
@@ -64,5 +64,5 @@ int GetVlogVerbosity() { return std::max(-1, LOG_INFO - GetMinLogLevel()); }
 
 bool ShouldCreateLogMessage(LogSeverity severity) { return severity >= GetMinLogLevel(); }
 
-}  // namespace base
-}  // namespace footstone
+} // namespace log
+} // namespace footstone

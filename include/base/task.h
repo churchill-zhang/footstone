@@ -5,7 +5,7 @@
 #include <functional>
 
 namespace footstone {
-namespace base {
+inline namespace runner {
 
 class Task {
  public:
@@ -26,5 +26,5 @@ class Task {
   std::function<void()> unit_;  // A unit of work to be processed
 };
 
-}  // namespace base
+}  // namespace runner
 }  // namespace footstone

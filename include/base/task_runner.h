@@ -12,9 +12,12 @@
 #include "time_point.h"
 
 namespace footstone {
-namespace base {
+inline namespace runner {
+
 class TaskRunner {
  public:
+  using TimePoint = time::TimePoint;
+
   explicit TaskRunner(bool is_excl = false, int priority = 1, const std::string& name = "");
   ~TaskRunner();
 
@@ -104,5 +107,5 @@ class TaskRunner {
   TDF_BASE_DISALLOW_COPY_AND_ASSIGN(TaskRunner);
 };
 
-}  // namespace base
+}  // namespace runner
 }  // namespace footstone

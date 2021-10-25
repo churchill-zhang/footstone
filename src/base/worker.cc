@@ -9,7 +9,7 @@
 #include "base/worker_pool.h"
 
 namespace footstone {
-namespace base {
+inline namespace runner {
 
 std::atomic<int32_t> global_worker_id{0};
 thread_local int32_t local_worker_id;
@@ -17,14 +17,11 @@ thread_local bool is_task_running = false;
 thread_local std::shared_ptr<TaskRunner> local_runner;
 
 Worker::Worker(const std::string& name)
-    : Thread(name), name_(name), is_terminated_(false),
-    is_stacking_mode_(false) {
+    : Thread(name), name_(name), is_terminated_(false), is_stacking_mode_(false) {
   cv_ = std::make_shared<std::condition_variable>();
 }
 
-Worker::~Worker() {
-  Worker::WorkerDestroySpecifics();
-}
+Worker::~Worker() { Worker::WorkerDestroySpecifics(); }
 
 int32_t Worker::GetCurrentWorkerId() { return local_worker_id; }
 std::shared_ptr<TaskRunner> Worker::GetCurrentTaskRunner() {
@@ -278,9 +275,7 @@ std::unique_ptr<Task> Worker::GetNextTask() {
   return nullptr;
 }
 
-bool Worker::IsTaskRunning() {
-  return is_task_running;
-}
+bool Worker::IsTaskRunning() { return is_task_running; }
 
 // 返回值小于0表示失败
 int32_t Worker::WorkerKeyCreate(int32_t task_runner_id, std::function<void(void*)> destruct) {
@@ -381,8 +376,8 @@ void Worker::WorkerDestroySpecifics() {
   }
 }
 
-std::array<Worker::WorkerKey, Worker::kWorkerKeysMax>
-    Worker::GetMovedSpecificKeys(int32_t task_runner_id) {
+std::array<Worker::WorkerKey, Worker::kWorkerKeysMax> Worker::GetMovedSpecificKeys(
+    int32_t task_runner_id) {
   std::lock_guard<std::mutex> lock(specific_mutex_);
 
   auto it = worker_key_map_.find(task_runner_id);
@@ -420,5 +415,5 @@ void Worker::UpdateSpecific(int32_t task_runner_id,
   specific_map_[task_runner_id] = array;  // insert or update
 }
 
-}  // namespace base
-}  // namespace footstone
+} // namespace runner
+} // namespace footstone

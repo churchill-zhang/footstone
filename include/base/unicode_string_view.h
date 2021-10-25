@@ -12,7 +12,7 @@
 #endif
 
 namespace footstone {
-namespace base {
+inline namespace stringview {
 
 class unicode_string_view final {
  public:
@@ -133,12 +133,12 @@ class unicode_string_view final {
   friend std::hash<unicode_string_view>;
 };
 
-}  // namespace base
+}  // namespace stringview
 }  // namespace footstone
 
 template <>
-struct std::hash<footstone::base::unicode_string_view> {
-  std::size_t operator()(const footstone::base::unicode_string_view& value) const noexcept;
+struct std::hash<footstone::unicode_string_view> {
+  std::size_t operator()(const footstone::unicode_string_view& value) const noexcept;
 };
 
 #if !defined(__cpp_char8_t) && (defined(__GLIBC__))
@@ -152,16 +152,17 @@ struct std::hash<footstone::base::unicode_string_view::u8string>
 
 inline namespace literals {
 inline namespace string_literals {
-[[nodiscard]] inline constexpr const footstone::base::unicode_string_view::char8_t_* operator"" _u8_ptr(
-    const u8_type* u8, size_t) {
-  return (footstone::base::unicode_string_view::char8_t_*)u8;
+[[nodiscard]] inline constexpr const footstone::stringview::unicode_string_view::char8_t_*
+  operator"" _u8_ptr(const u8_type* u8, size_t) {
+  return (footstone::stringview::unicode_string_view::char8_t_*)u8;
 }
 
-[[nodiscard]] inline const footstone::base::unicode_string_view operator"" _u8s(const u8_type* u8,
-                                                                          size_t length) {
-  return footstone::base::unicode_string_view::new_from_utf8(u8, length);
+[[nodiscard]] inline const footstone::stringview::unicode_string_view
+  operator"" _u8s(const u8_type* u8, size_t length) {
+  return footstone::stringview::unicode_string_view::new_from_utf8(u8, length);
 }
-}  // namespace string_literals
-}  // namespace literals
+
+} // namespace string_literals
+} // namespace literals
 
 #undef u8_type

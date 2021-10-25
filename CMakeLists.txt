@@ -9,6 +9,6 @@ include_directories(
     ${THIRD_PARTY}/refl-cpp/include
     ${THIRD_PARTY}/json/include
 )
-set(TDF_BASE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+set(FOOTSTONE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 add_subdirectory(src)
 #add_subdirectory(test)

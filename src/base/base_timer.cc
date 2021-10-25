@@ -1,7 +1,7 @@
 #include "base/base_timer.h"
 
 namespace footstone {
-namespace base {
+inline namespace timer {
 
 BaseTimer::BaseTimer(std::shared_ptr<TaskRunner> task_runner)
     : user_task_(nullptr), task_runner_(task_runner) {}
@@ -75,5 +75,5 @@ void BaseTimer::Reset() {
   ScheduleNewTask(delay_);
 }
 
-}  // namespace base
+}  // namespace timer
 }  // namespace footstone

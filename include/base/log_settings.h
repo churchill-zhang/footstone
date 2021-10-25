@@ -8,7 +8,8 @@
 #include <string>
 
 namespace footstone {
-namespace base {
+inline namespace log {
+
 struct LogSettings {
   LogSeverity min_log_level = TDF_LOG_INFO;
 };
@@ -19,7 +20,7 @@ LogSettings GetLogSettings();
 
 int GetMinLogLevel();
 
-}  // namespace base
+}  // namespace log
 }  // namespace footstone
 
 #endif  // TDF_BASE_INCLUDE_LOG_SETTINGS_H_

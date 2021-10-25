@@ -5,9 +5,9 @@
 #include "base/logging.h"
 #include "base/worker_pool.h"
 
-using WorkerPool = footstone::base::WorkerPool;
-using TaskRunner = footstone::base::TaskRunner;
-using Task = footstone::base::Task;
+using WorkerPool = footstone::WorkerPool;
+using TaskRunner = footstone::TaskRunner;
+using Task = footstone::Task;
 
 int main() {
   std::shared_ptr<WorkerPool> pool = WorkerPool::GetInstance(3);
@@ -25,7 +25,7 @@ int main() {
   TDF_BASE_LOG(ERROR) << "CreateTestTaskRunner begin ";
   auto test = pool->CreateTaskRunner(true, 1, "testTaskRunner");
   test->PostTask([=]() {
-      auto stirng = test->GetName();
+      test->GetName();
   });
   TDF_BASE_LOG(ERROR) << "CreateTestTaskRunner end ";
 

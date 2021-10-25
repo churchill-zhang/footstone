@@ -12,7 +12,7 @@
 #include "macros.h"
 
 namespace footstone {
-namespace base {
+inline namespace runner {
 
 class Thread {
  public:
@@ -35,5 +35,5 @@ class Thread {
   TDF_BASE_DISALLOW_COPY_AND_ASSIGN(Thread);
 };
 
-}  // namespace base
+}  // namespace runner
 }  // namespace footstone

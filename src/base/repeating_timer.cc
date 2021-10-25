@@ -2,7 +2,8 @@
 
 #include "base/logging.h"
 
-namespace footstone::base {
+namespace footstone {
+inline namespace timer {
 
 RepeatingTimer::~RepeatingTimer() = default;
 
@@ -20,4 +21,5 @@ void RepeatingTimer::RunUserTask() {
   task->Run();
 }
 
-}  // namespace footstone::base
+} // namespace timer
+} // namespace footstone
