@@ -5,7 +5,7 @@
 
 #include "log_level.h"
 
-#include <string>
+#include "../../../../../Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX11.3.sdk/usr/include/c++/v1/string"
 
 namespace footstone {
 inline namespace log {

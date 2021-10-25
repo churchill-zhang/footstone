@@ -1,9 +1,9 @@
-#include "base/worker_pool.h"
+#include "worker_pool.h"
 
 #include <map>
 #include <array>
 
-#include "base/logging.h"
+#include "logging.h"
 
 namespace footstone {
 inline namespace runner {

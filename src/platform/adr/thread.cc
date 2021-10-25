@@ -2,7 +2,7 @@
 
 #define BASE_USED_ON_EMBEDDER
 
-#include "base/thread.h"
+#include "thread.h"
 
 #include <pthread.h>
 

@@ -1,12 +1,12 @@
-#include "base/worker.h"
+#include "worker.h"
 
 #include <algorithm>
 #include <array>
 #include <atomic>
 #include <map>
 
-#include "base/logging.h"
-#include "base/worker_pool.h"
+#include "logging.h"
+#include "worker_pool.h"
 
 namespace footstone {
 inline namespace runner {

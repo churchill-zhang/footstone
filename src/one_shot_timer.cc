@@ -1,6 +1,6 @@
-#include "base/one_shot_timer.h"
+#include "one_shot_timer.h"
 
-#include "base/logging.h"
+#include "logging.h"
 
 namespace footstone {
 inline namespace timer {

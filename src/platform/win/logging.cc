@@ -1,12 +1,12 @@
 // Copyright (c) 2020 Tencent Corporation. All rights reserved.
 
-#include "base/logging.h"
+#include "logging.h"
 
 #include <string.h>
 #include <algorithm>
 #include <iostream>
 
-#include "base/log_settings.h"
+#include "log_settings.h"
 
 #define LOG_INFO 6 /*informational*/
 

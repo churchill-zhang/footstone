@@ -8,7 +8,7 @@
 #  define TDF_PLATFORM_ANDROID 1
 #  define TDF_PLATFORM_MOBILE 1
 #elif __APPLE__
-#  include <TargetConditionals.h>
+#  include "../../../../../Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX11.3.sdk/usr/include/TargetConditionals.h"
 #  if TARGET_OS_IPHONE
 #    define TDF_PLATFORM_IOS 1
 #    define TDF_PLATFORM_MOBILE 1
