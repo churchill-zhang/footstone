@@ -1,6 +1,6 @@
-#include "unicode_string_view.h"
-
 #include <cassert>
+
+#include "base/unicode_string_view.h"
 
 using unicode_string_view = footstone::stringview::unicode_string_view;
 

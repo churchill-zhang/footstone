@@ -1,6 +1,6 @@
 // Copyright (c) 2020 Tencent Corporation. All rights reserved.
 
-#include "log_settings.h"
+#include "base/log_settings.h"
 
 #include <fcntl.h>
 #include <string.h>
@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <iostream>
 
-#include "logging.h"
+#include "base/logging.h"
 
 namespace footstone {
 inline namespace log {

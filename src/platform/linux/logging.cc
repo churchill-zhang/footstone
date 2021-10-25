@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <iostream>
 
-#include "log_settings.h"
+#include "base/log_settings.h"
 
 namespace footstone {
 inline namespace log {

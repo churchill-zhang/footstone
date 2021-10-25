@@ -1,3 +1,4 @@
+#add_subdirectory(footstone)
 if (WIN32)
 	add_subdirectory(platform/win)
 elseif (APPLE)

@@ -1,6 +1,6 @@
 // Copyright (c) 2020 Tencent Corporation. All rights reserved.
 
-#include "logging.h"
+#include "base/logging.h"
 
 #include <android/log.h>
 

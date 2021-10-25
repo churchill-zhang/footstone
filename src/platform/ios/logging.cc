@@ -1,13 +1,13 @@
 // Copyright (c) 2020 Tencent Corporation. All rights reserved.
 
-#include "logging.h"
+#include "base/logging.h"
 
 #include <syslog.h>
 
 #include <algorithm>
 #include <iostream>
 
-#include "log_settings.h"
+#include "base/log_settings.h"
 
 namespace footstone {
 inline namespace log {

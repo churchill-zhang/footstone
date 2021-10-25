@@ -2,8 +2,8 @@
 
 #include <future>
 
-#include "logging.h"
-#include "worker_pool.h"
+#include "base/logging.h"
+#include "base/worker_pool.h"
 
 using WorkerPool = footstone::WorkerPool;
 using TaskRunner = footstone::TaskRunner;
