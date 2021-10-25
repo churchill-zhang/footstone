@@ -1,6 +1,6 @@
 // Copyright (c) 2020 Tencent Corporation. All rights reserved.
 
-#include "base/log_settings.h"
+#include "footstone/log_settings.h"
 
 #include <fcntl.h>
 #include <string.h>

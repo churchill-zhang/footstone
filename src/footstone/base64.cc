@@ -1,7 +1,7 @@
 //
 // Copyright (c) Tencent Corporation. All rights reserved.
 //
-#include "base/base64.h"
+#include "footstone/base64.h"
 namespace footstone {
 std::string Base64::Encode(const uint8_t *bin, const size_t len) {
   static constexpr char kEncodingTable[] = {

@@ -1,6 +1,6 @@
 // Copyright (c) 2020 Tencent Corporation. All rights reserved.
 
-#include "base/logging.h"
+#include "footstone/logging.h"
 
 #include <string.h>
 #include <algorithm>

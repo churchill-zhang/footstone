@@ -1,6 +1,6 @@
-#include "base/repeating_timer.h"
+#include "footstone/repeating_timer.h"
 
-#include "base/logging.h"
+#include "footstone/logging.h"
 
 namespace footstone {
 inline namespace timer {
