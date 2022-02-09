@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <array>
+#include <utility>
 
 #include "footstone/logging.h"
 #include "footstone/worker.h"
@@ -9,16 +10,17 @@
 namespace footstone {
 inline namespace runner {
 
-std::atomic<int32_t> global_task_runner_id{0};
+using IdleCbParam = IdleTask::IdleCbParam;
 
-TaskRunner::TaskRunner(bool is_excl, int32_t priority, const std::string& name)
-    : is_terminated_(false),
-      is_excl_(is_excl),
-      name_(name),
+std::atomic<uint32_t> global_task_runner_id{0};
+
+TaskRunner::TaskRunner(uint32_t group_id, uint32_t priority, bool is_schedulable, std::string name):
+      group_id_(group_id),
+      name_(std::move(name)),
       has_sub_runner_(false),
+      is_schedulable_(is_schedulable),
       priority_(priority),
-      time_(TimeDelta::Zero()),
-      cv_(nullptr) {
+      time_(TimeDelta::Zero()) {
   id_ = global_task_runner_id.fetch_add(1);
 }
 
@@ -30,75 +32,85 @@ TaskRunner::~TaskRunner() {
 }
 
 void TaskRunner::Clear() {
-  std::unique_lock<std::mutex> lock(mutex_);
-
-  while (!task_queue_.empty()) {
-    task_queue_.pop();
+  {
+    std::lock_guard<std::mutex> lock(queue_mutex_);
+    while (!task_queue_.empty()) {
+      task_queue_.pop();
+    }
   }
-
-  while (!delayed_task_queue_.empty()) {
-    delayed_task_queue_.pop();
+  {
+    std::lock_guard<std::mutex> lock(delay_mutex_);
+    while (!delayed_task_queue_.empty()) {
+      delayed_task_queue_.pop();
+    }
+  }
+  {
+    std::lock_guard<std::mutex> lock(idle_mutex_);
+    while (!idle_task_queue_.empty()) {
+      delayed_task_queue_.pop();
+    }
   }
 }
 
-void TaskRunner::AddSubTaskRunner(std::shared_ptr<TaskRunner> sub_runner, bool is_task_running) {
+bool TaskRunner::AddSubTaskRunner(const std::shared_ptr<TaskRunner>& sub_runner,
+                                  bool is_task_running) {
   std::shared_ptr<Worker> worker = worker_.lock();
-  if (worker) {
-    worker->BindGroup(id_, sub_runner);
-    has_sub_runner_ = true;
-    if (is_task_running) {
-      worker->SetStackingMode(true);
-      while (has_sub_runner_) {
-        TDF_BASE_DLOG(WARNING) << "run task begin, has_sub_runner_ = " << has_sub_runner_;
-        worker->RunTask();
-        TDF_BASE_DLOG(WARNING) << "run task end";
-      }
-      TDF_BASE_DLOG(WARNING) << "exit";
+  if (!worker) {
+    return false;
+  }
+  worker->BindGroup(id_, sub_runner);
+  has_sub_runner_ = true;
+  if (is_task_running) {
+    worker->SetStackingMode(true);
+    while (has_sub_runner_) {
+      worker->RunTask();
     }
   }
+  return true;
 }
 
-void TaskRunner::RemoveSubTaskRunner(std::shared_ptr<TaskRunner> sub_runner) {
+bool TaskRunner::RemoveSubTaskRunner(const std::shared_ptr<TaskRunner>& sub_runner) {
+  if (!has_sub_runner_ || !sub_runner) {
+    return false;
+  }
   std::shared_ptr<Worker> worker = worker_.lock();
-  TDF_BASE_DLOG(WARNING) << "has_sub_runner_ = " << has_sub_runner_;
-  if (worker && sub_runner) {
-    worker->UnBind(sub_runner);
-    if (has_sub_runner_) {
-      TDF_BASE_DLOG(WARNING) << "exit sub";
-      has_sub_runner_ = false;
-    }
-    if (cv_) {  // 通知父Runner执行
-      cv_->notify_one();
-    }
+  if (!worker) {
+    return false;
   }
+  worker->UnBind(sub_runner);
+  has_sub_runner_ = false;
+  NotifyWorker();
+  return true;
 }
-
-void TaskRunner::Terminate() { is_terminated_ = true; }
 
 void TaskRunner::PostTask(std::unique_ptr<Task> task) {
-  std::lock_guard<std::mutex> lock(mutex_);
-
-  task_queue_.push(std::move(task));
-  if (cv_) {  // cv未初始化时要等cv初始化后立刻处理
-    cv_->notify_one();
+  {
+    std::lock_guard<std::mutex> lock(queue_mutex_);
+    task_queue_.push(std::move(task));
   }
+  NotifyWorker();
 }
 
 void TaskRunner::PostDelayedTask(std::unique_ptr<Task> task, TimeDelta delay) {
-  std::lock_guard<std::mutex> lock(mutex_);
+  {
+    std::lock_guard<std::mutex> lock(delay_mutex_);
 
-  if (is_terminated_) {
-    return;
+    TimePoint deadline = TimePoint::Now() + delay;
+    delayed_task_queue_.push(std::make_pair(deadline, std::move(task)));
   }
+  NotifyWorker();
+}
 
-  TimePoint deadline = TimePoint::Now() + delay;
-  delayed_task_queue_.push(std::make_pair(deadline, std::move(task)));
-
-  cv_->notify_one();
+void TaskRunner::PostIdleTask(std::unique_ptr<IdleTask> task) {
+  {
+    std::lock_guard<std::mutex> lock(idle_mutex_);
+    idle_task_queue_.push(std::move(task));
+  }
+  NotifyWorker();
 }
 
 std::unique_ptr<Task> TaskRunner::PopTask() {
-  std::lock_guard<std::mutex> lock(mutex_);
+  std::lock_guard<std::mutex> lock(queue_mutex_);
 
   if (!task_queue_.empty()) {
     std::unique_ptr<Task> result = std::move(task_queue_.front());
@@ -109,8 +121,20 @@ std::unique_ptr<Task> TaskRunner::PopTask() {
   return nullptr;
 }
 
+std::unique_ptr<IdleTask> TaskRunner::PopIdleTask() {
+  std::lock_guard<std::mutex> lock(idle_mutex_);
+
+  if (!idle_task_queue_.empty()) {
+    std::unique_ptr<IdleTask> result = std::move(idle_task_queue_.front());
+    idle_task_queue_.pop();
+    return result;
+  }
+
+  return nullptr;
+}
+
 std::unique_ptr<Task> TaskRunner::GetTopDelayTask() {
-  std::lock_guard<std::mutex> lock(mutex_);
+  std::lock_guard<std::mutex> lock(delay_mutex_);
 
   if (task_queue_.empty() && !delayed_task_queue_.empty()) {
     std::unique_ptr<Task> result =
@@ -121,37 +145,40 @@ std::unique_ptr<Task> TaskRunner::GetTopDelayTask() {
 }
 
 std::unique_ptr<Task> TaskRunner::GetNext() {
-  std::unique_lock<std::mutex> lock(mutex_);
-
-  if (is_terminated_) {
-    return nullptr;
-  }
-
   TimePoint now = TimePoint::Now();
   std::unique_ptr<Task> task = popTaskFromDelayedQueueNoLock(now);
-  while (task) {
-    task_queue_.push(std::move(task));
-    task = popTaskFromDelayedQueueNoLock(now);
+  {
+    std::scoped_lock lock(queue_mutex_, delay_mutex_);
+    while (task) {
+      task_queue_.push(std::move(task));
+      task = popTaskFromDelayedQueueNoLock(now);
+    }
   }
-
-  if (!task_queue_.empty()) {
-    std::unique_ptr<Task> result = std::move(task_queue_.front());
-    task_queue_.pop();
-    return result;
+  {
+    std::lock_guard<std::mutex> lock(queue_mutex_);
+    if (!task_queue_.empty()) {
+      std::unique_ptr<Task> result = std::move(task_queue_.front());
+      task_queue_.pop();
+      return result;
+    }
   }
   return nullptr;
 }
 
-void TaskRunner::SetCv(std::shared_ptr<std::condition_variable> cv) { cv_ = cv; }
-
 TimeDelta TaskRunner::GetNextTimeDelta(TimePoint now) {
-  std::unique_lock<std::mutex> lock(mutex_);
-  if (task_queue_.empty() && !delayed_task_queue_.empty()) {
+  std::unique_lock<std::mutex> lock(delay_mutex_);
+  if (!delayed_task_queue_.empty()) {
     const DelayedEntry& delayed_task = delayed_task_queue_.top();
     return delayed_task.first - now;
   } else {
     return TimeDelta::Max();
   }
+}
+
+void TaskRunner::NotifyWorker() {
+  std::shared_ptr<Worker> worker = worker_.lock();
+  TDF_BASE_CHECK(worker);
+  worker->Notify();
 }
 
 std::unique_ptr<Task> TaskRunner::popTaskFromDelayedQueueNoLock(TimePoint now) {
@@ -173,58 +200,44 @@ std::shared_ptr<TaskRunner> TaskRunner::GetCurrentTaskRunner() {
   return Worker::GetCurrentTaskRunner();
 }
 
-int32_t TaskRunner::RunnerKeyCreate(std::function<void(void*)> destruct) {
-  if (Worker::IsTaskRunning()) {
-    auto task_runner_id = Worker::GetCurrentTaskRunner()->GetId();
-    std::shared_ptr<Worker> worker = worker_.lock();
-    if (worker) {
-      return worker->WorkerKeyCreate(task_runner_id, std::move(destruct));
-    }
-  }
-  return -1;
+int32_t TaskRunner::RunnerKeyCreate(const std::function<void(void*)>& destruct) {
+  TDF_BASE_CHECK(Worker::IsTaskRunning()) << "RunnerKeyCreate cannot be run outside of the task";
+  auto task_runner_id = Worker::GetCurrentTaskRunner()->GetId();
+  std::shared_ptr<Worker> worker = worker_.lock();
+  TDF_BASE_CHECK(worker); // task在运行，理论worker应该还在
+  return worker->WorkerKeyCreate(task_runner_id, destruct);
 }
 
 bool TaskRunner::RunnerKeyDelete(int32_t key) {
-  if (Worker::IsTaskRunning()) {
-    auto task_runner_id = Worker::GetCurrentTaskRunner()->GetId();
-    std::shared_ptr<Worker> worker = worker_.lock();
-    if (worker) {
-      return worker->WorkerKeyDelete(task_runner_id, key);
-    }
-  }
-  return false;
+  TDF_BASE_CHECK(Worker::IsTaskRunning()) << "RunnerKeyDelete cannot be run outside of the task";
+  auto task_runner_id = Worker::GetCurrentTaskRunner()->GetId();
+  std::shared_ptr<Worker> worker = worker_.lock();
+  TDF_BASE_CHECK(worker);
+  return worker->WorkerKeyDelete(task_runner_id, key);
 }
 
 bool TaskRunner::RunnerSetSpecific(int32_t key, void* p) {
-  if (Worker::IsTaskRunning()) {
-    auto task_runner_id = Worker::GetCurrentTaskRunner()->GetId();
-    std::shared_ptr<Worker> worker = worker_.lock();
-    if (worker) {
-      return worker->WorkerSetSpecific(task_runner_id, key, p);
-    }
-  }
-  return false;
+  TDF_BASE_CHECK(Worker::IsTaskRunning()) << "RunnerSetSpecific cannot be run outside of the task";
+  auto task_runner_id = Worker::GetCurrentTaskRunner()->GetId();
+  std::shared_ptr<Worker> worker = worker_.lock();
+  TDF_BASE_CHECK(worker);
+  return worker->WorkerSetSpecific(task_runner_id, key, p);
 }
 
 void* TaskRunner::RunnerGetSpecific(int32_t key) {
-  if (Worker::IsTaskRunning()) {
-    auto task_runner_id = Worker::GetCurrentTaskRunner()->GetId();
-    std::shared_ptr<Worker> worker = worker_.lock();
-    if (worker) {
-      return worker->WorkerGetSpecific(task_runner_id, key);
-    }
-  }
-  return nullptr;
+  TDF_BASE_CHECK(Worker::IsTaskRunning()) << "RunnerGetSpecific cannot be run outside of the task";
+  auto task_runner_id = Worker::GetCurrentTaskRunner()->GetId();
+  std::shared_ptr<Worker> worker = worker_.lock();
+  TDF_BASE_CHECK(worker);
+  return worker->WorkerGetSpecific(task_runner_id, key);
 }
 
 void TaskRunner::RunnerDestroySpecifics() {
-  if (Worker::IsTaskRunning()) {
-    auto task_runner_id = Worker::GetCurrentTaskRunner()->GetId();
-    std::shared_ptr<Worker> worker = worker_.lock();
-    if (worker) {
-      return worker->WorkerDestroySpecific(task_runner_id);
-    }
-  }
+  TDF_BASE_CHECK(Worker::IsTaskRunning()) << "RunnerDestroySpecifics cannot be run outside of the task";
+  auto task_runner_id = Worker::GetCurrentTaskRunner()->GetId();
+  std::shared_ptr<Worker> worker = worker_.lock();
+  TDF_BASE_CHECK(worker);
+  return worker->WorkerDestroySpecific(task_runner_id);
 }
 
 } // namespace runner

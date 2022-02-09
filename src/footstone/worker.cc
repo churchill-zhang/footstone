@@ -4,9 +4,16 @@
 #include <array>
 #include <atomic>
 #include <map>
+#include <utility>
 
 #include "footstone/logging.h"
-#include "footstone/worker_pool.h"
+#include "footstone/worker_manager.h"
+
+#ifdef ANDROID
+#include "footstone/platform/adr/loop_worker_impl.h"
+#elif defined IOS
+#include "footstone/platform/ios/loop_worker_impl.h"
+#endif
 
 namespace footstone {
 inline namespace runner {
@@ -15,70 +22,86 @@ std::atomic<int32_t> global_worker_id{0};
 thread_local int32_t local_worker_id;
 thread_local bool is_task_running = false;
 thread_local std::shared_ptr<TaskRunner> local_runner;
+thread_local std::vector<std::shared_ptr<TaskRunner>> curr_group;
 
-Worker::Worker(const std::string& name)
-    : Thread(name), name_(name), is_terminated_(false), is_stacking_mode_(false) {
-  cv_ = std::make_shared<std::condition_variable>();
+Worker::Worker(bool is_schedulable, std::string name)
+    : is_schedulable_(is_schedulable), name_(std::move(name)), is_terminated_(false),
+      need_balance_(false), is_stacking_mode_(false), min_wait_time_(TimeDelta::Max()),
+      next_task_time_(TimePoint::Max()), has_migration_data_(false), is_exit_immediately_(true) {}
+
+Worker::~Worker() {
+  TDF_BASE_CHECK(is_terminated_) << "Terminate function must be called before destruction";
+  Worker::WorkerDestroySpecifics();
 }
-
-Worker::~Worker() { Worker::WorkerDestroySpecifics(); }
 
 int32_t Worker::GetCurrentWorkerId() { return local_worker_id; }
 std::shared_ptr<TaskRunner> Worker::GetCurrentTaskRunner() {
-  if (is_task_running) {
-    return local_runner;
-  }
-  return nullptr;
+  TDF_BASE_CHECK(is_task_running) << "GetCurrentTaskRunner cannot be run outside of the task ";
+
+  return local_runner;
 }
 
-void Worker::Balance() {
-  // running_mutex_ has locked before balance
-  std::lock_guard<std::mutex> lock(balance_mutex_);
+bool Worker::HasUnschedulableRunner() {
+  std::lock_guard<std::mutex> lock(running_mutex_);
+  for (const auto &group: running_groups_) {
+    for (const auto &runner: group) {
+      if (!runner->IsSchedulable()) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
 
+void Worker::BalanceNoLock() {
   if (pending_groups_.empty()) {
     return;
   }
 
   TimeDelta time;  // default 0
-  if (!running_groups_.empty()) {
-    // Sort is executed before balance
-    time = running_groups_.front().at(0)->GetTime();
+  auto running_it = running_groups_.begin();
+  if (running_it != running_groups_.end()) {
+    time = running_it->front()->GetTime();
   }
-  for (auto it = pending_groups_.begin(); it != pending_groups_.end(); ++it) {
-    auto group = *it;
-    for (auto group_it = it->begin(); group_it != it->end(); ++group_it) {
-      (*group_it)->SetTime(time);
+  // 等待队列初始化为当前优先级最高taskRunner运行时间
+  for (auto &group : pending_groups_) {
+    for (auto &runner : group) {
+      runner->SetTime(time);
     }
   }
-  running_groups_.splice(running_groups_.end(), pending_groups_);
-  // The first taskrunner still has the highest priority
+  // 新的taskRunner插入到最高优先级之后，既可以保证原有队列执行顺序不变，又可以使得未执行的TaskRunner优先级高
+  running_groups_.splice(running_it, pending_groups_);
 }
 
-void Worker::RunTask() {
+bool Worker::RunTask() {
   auto task = GetNextTask();
   if (task) {
     TimePoint begin = TimePoint::Now();
     is_task_running = true;
     task->Run();
     is_task_running = false;
-    for (auto it = curr_group_.begin(); it != curr_group_.end(); ++it) {
-      (*it)->AddTime(TimePoint::Now() - begin);
+    for (auto &it : curr_group) {
+      it->AddTime(TimePoint::Now() - begin);
     }
+  } else if (is_terminated_) {
+    return false;
   }
+  return true;
 }
 
 void Worker::Run() {
-  local_worker_id = global_worker_id.fetch_add(1);
-  TDF_BASE_LOG(ERROR) << "local_worker_id = " << local_worker_id;
-  while (!is_terminated_) {
-    RunTask();
+  if (is_terminated_) {
+    return;
   }
+  local_worker_id = global_worker_id.fetch_add(1);
+  RunLoop();
 }
 
-void Worker::Sort() {
+void Worker::SortNoLock() { // sort后优先级越高的TaskRunner分组距离队列头部越近
   if (!running_groups_.empty()) {
-    running_groups_.sort([](const auto& lhs, const auto& rhs) {
-      TDF_BASE_DCHECK(!lhs.empty() && !rhs.empty());
+    running_groups_.sort([](const auto &lhs, const auto &rhs) {
+      TDF_BASE_CHECK(!lhs.empty() && !rhs.empty());
+      // 运行时间越短优先级越高，priority越小优先级越高
       int64_t left = lhs[0]->GetPriority() * lhs[0]->GetTime().ToNanoseconds();
       int64_t right = rhs[0]->GetPriority() * rhs[0]->GetTime().ToNanoseconds();
       if (left < right) {
@@ -90,18 +113,16 @@ void Worker::Sort() {
 }
 
 void Worker::Terminate() {
-  is_terminated_ = true;
-  cv_->notify_one();
-  Join();
+  TerminateWorker();
 }
 
-void Worker::BindGroup(int father_id, std::shared_ptr<TaskRunner> child) {
-  std::lock_guard<std::mutex> lock(running_mutex_);
+void Worker::BindGroup(int father_id, const std::shared_ptr<TaskRunner> &child) {
+  std::lock_guard<std::mutex> running_lock(running_mutex_);
   std::list<std::vector<std::shared_ptr<TaskRunner>>>::iterator group_it;
   bool has_found = false;
   for (group_it = running_groups_.begin(); group_it != running_groups_.end(); ++group_it) {
-    for (auto runner_it = group_it->begin(); runner_it != group_it->end(); ++runner_it) {
-      if ((*runner_it)->GetId() == father_id) {
+    for (auto &runner_it : *group_it) {
+      if (runner_it->GetId() == father_id) {
         has_found = true;
         break;
       }
@@ -111,10 +132,10 @@ void Worker::BindGroup(int father_id, std::shared_ptr<TaskRunner> child) {
     }
   }
   if (!has_found) {
-    std::lock_guard<std::mutex> lock(balance_mutex_);
+    std::lock_guard<std::mutex> balance_lock(pending_mutex_);
     for (group_it = pending_groups_.begin(); group_it != pending_groups_.end(); ++group_it) {
-      for (auto runner_it = group_it->begin(); runner_it != group_it->end(); ++runner_it) {
-        if ((*runner_it)->GetId() == father_id) {
+      for (auto &runner_it : *group_it) {
+        if (runner_it->GetId() == father_id) {
           has_found = true;
           break;
         }
@@ -127,45 +148,38 @@ void Worker::BindGroup(int father_id, std::shared_ptr<TaskRunner> child) {
   group_it->push_back(child);
 }
 
-void Worker::Bind(std::vector<std::shared_ptr<TaskRunner>> runner) {
-  std::lock_guard<std::mutex> lock(balance_mutex_);
+void Worker::Bind(std::vector<std::shared_ptr<TaskRunner>> group) {
+  {
+    std::lock_guard<std::mutex> lock(pending_mutex_);
 
-  std::vector<std::shared_ptr<TaskRunner>> group{runner};
-  pending_groups_.insert(pending_groups_.end(), group);
+    auto group_id = group[0]->GetGroupId();
+    if (group_id != kDefaultGroupId) {
+      group_id_ = group_id;
+    }
+    pending_groups_.insert(pending_groups_.end(), std::move(group));
+  }
   need_balance_ = true;
-  cv_->notify_one();
+  Notify();
 }
 
 void Worker::Bind(std::list<std::vector<std::shared_ptr<TaskRunner>>> list) {
-  std::lock_guard<std::mutex> lock(balance_mutex_);
-  pending_groups_.splice(pending_groups_.end(), list);
+  {
+    std::lock_guard<std::mutex> lock(pending_mutex_);
+    pending_groups_.splice(pending_groups_.end(), list);
+  }
   need_balance_ = true;
-  cv_->notify_one();
+  Notify();
 }
 
-void Worker::UnBind(std::shared_ptr<TaskRunner> runner) {
-  std::lock_guard<std::mutex> lock(running_mutex_);
-
+void Worker::UnBind(const std::shared_ptr<TaskRunner> &runner) {
   std::vector<std::shared_ptr<TaskRunner>> group;
   bool has_found = false;
-  for (auto group_it = running_groups_.begin(); group_it != running_groups_.end(); ++group_it) {
-    for (auto runner_it = group_it->begin(); runner_it != group_it->end(); ++runner_it) {
-      if ((*runner_it)->GetId() == runner->GetId()) {
-        group_it->erase(runner_it);
-        has_found = true;
-        break;
-      }
-    }
-    if (has_found) {
-      break;
-    }
-  }
-  if (!has_found) {
-    std::lock_guard<std::mutex> lock(balance_mutex_);
-    for (auto group_it = pending_groups_.begin(); group_it != pending_groups_.end(); ++group_it) {
-      for (auto runner_it = group_it->begin(); runner_it != group_it->end(); ++runner_it) {
+  {
+    std::lock_guard<std::mutex> running_lock(running_mutex_);
+    for (auto &running_group : running_groups_) {
+      for (auto runner_it = running_group.begin(); runner_it != running_group.end(); ++runner_it) {
         if ((*runner_it)->GetId() == runner->GetId()) {
-          group_it->erase(runner_it);
+          running_group.erase(runner_it);
           has_found = true;
           break;
         }
@@ -175,6 +189,30 @@ void Worker::UnBind(std::shared_ptr<TaskRunner> runner) {
       }
     }
   }
+
+  if (!has_found) {
+    {
+      std::lock_guard<std::mutex> balance_lock(pending_mutex_);
+      for (auto &pending_group : pending_groups_) {
+        for (auto runner_it = pending_group.begin(); runner_it != pending_group.end();
+             ++runner_it) {
+          if ((*runner_it)->GetId() == runner->GetId()) {
+            pending_group.erase(runner_it);
+            has_found = true;
+            break;
+          }
+        }
+        if (has_found) {
+          break;
+        }
+      }
+    }
+  }
+}
+
+int32_t Worker::GetRunningGroupSize() {
+  std::lock_guard<std::mutex> lock(running_mutex_);
+  return running_groups_.size();
 }
 
 std::list<std::vector<std::shared_ptr<TaskRunner>>> Worker::UnBind() {
@@ -184,7 +222,7 @@ std::list<std::vector<std::shared_ptr<TaskRunner>>> Worker::UnBind() {
     ret.splice(ret.end(), running_groups_);
   }
   {
-    std::lock_guard<std::mutex> lock(balance_mutex_);
+    std::lock_guard<std::mutex> lock(pending_mutex_);
     ret.splice(ret.end(), pending_groups_);
   }
 
@@ -192,28 +230,44 @@ std::list<std::vector<std::shared_ptr<TaskRunner>>> Worker::UnBind() {
 }
 
 std::list<std::vector<std::shared_ptr<TaskRunner>>> Worker::ReleasePending() {
-  std::lock_guard<std::mutex> lock(balance_mutex_);
+  std::lock_guard<std::mutex> lock(pending_mutex_);
 
   std::list<std::vector<std::shared_ptr<TaskRunner>>> ret(std::move(pending_groups_));
-  pending_groups_ = std::list<std::vector<std::shared_ptr<TaskRunner>>>{};
+  pending_groups_ = {};
   return ret;
 }
 
-std::list<std::vector<std::shared_ptr<TaskRunner>>> Worker::RetainActive() {
-  std::lock_guard<std::mutex> lock(running_mutex_);
+std::list<std::vector<std::shared_ptr<TaskRunner>>> Worker::RetainActiveAndUnschedulable() {
   std::list<std::vector<std::shared_ptr<TaskRunner>>> ret;
-  auto group_it = running_groups_.begin();
-  if (group_it != running_groups_.end()) {
-    ++group_it;
-    ret.splice(ret.end(), running_groups_, group_it, running_groups_.end());
+  {
+    std::lock_guard<std::mutex> lock(running_mutex_);
+    for (auto group_it = running_groups_.begin(); group_it != running_groups_.end(); ++group_it) {
+      if (group_it == running_groups_.begin()) {
+        continue;
+      }
+      bool has_unschedulable = false;
+      for (auto &runner : *group_it) {
+        if (runner->IsSchedulable()) {
+          has_unschedulable = true;
+          break;
+        }
+      }
+      if (has_unschedulable) {
+        continue;
+      }
+      ret.splice(ret.end(), running_groups_, group_it);
+    }
+  }
+  {
+    std::lock_guard<std::mutex> lock(pending_mutex_);
+    ret.splice(ret.end(), pending_groups_);
   }
 
-  ret.splice(ret.end(), pending_groups_);
   return ret;
 }
 
 std::list<std::vector<std::shared_ptr<TaskRunner>>> Worker::Retain(
-    std::shared_ptr<TaskRunner> runner) {
+    const std::shared_ptr<TaskRunner> &runner) {
   std::lock_guard<std::mutex> lock(running_mutex_);
 
   std::vector<std::shared_ptr<TaskRunner>> group;
@@ -228,59 +282,89 @@ std::list<std::vector<std::shared_ptr<TaskRunner>>> Worker::Retain(
   }
 
   std::list<std::vector<std::shared_ptr<TaskRunner>>> ret(std::move(running_groups_));
-  running_groups_ = std::list<std::vector<std::shared_ptr<TaskRunner>>>{group};
+  running_groups_ = {group};
   return ret;
 }
 
+void Worker::AddImmediateTask(std::unique_ptr<Task> task) {
+  std::lock_guard<std::mutex> lock(running_mutex_);
+
+  immediate_task_queue_.push(std::move(task));
+}
+
+template <class F>
+auto MakeCopyable(F&& f) {
+  auto s = std::make_shared<std::decay_t<F>>(std::forward<F>(f));
+  return [s](auto&&... args) -> decltype(auto) {
+    return (*s)(decltype(args)(args)...);
+  };
+}
+
 std::unique_ptr<Task> Worker::GetNextTask() {
-  if (is_terminated_) {
-    return nullptr;
-  }
-
-  std::unique_lock<std::mutex> lock(running_mutex_);
-
-  Sort();
-  if (need_balance_) {
-    Balance();
-    need_balance_ = false;
-  }
-
-  TimeDelta min_time, time;
-  TimePoint now;
-  for (auto it = running_groups_.begin(); it != running_groups_.end(); ++it) {
-    std::shared_ptr<TaskRunner> runner = it->back();
-    auto task = runner->GetNext();
-    if (task) {
-      curr_group_ = *it;
-      local_runner = runner;
+  {
+    std::lock_guard<std::mutex> lock(running_mutex_);
+    if (!immediate_task_queue_.empty()) {
+      std::unique_ptr<Task> task = std::move(immediate_task_queue_.front());
+      immediate_task_queue_.pop();
       return task;
-    } else {
-      if (now == TimePoint()) {  // uninitialized
-        now = TimePoint::Now();
-        min_time = TimeDelta::Max();
-        time = min_time;
-      }
-      time = it->front()->GetNextTimeDelta(now);
-      if (min_time > time) {
-        min_time = time;
-      }
+    }
+    if (running_groups_.size() > 1) {
+      SortNoLock();
     }
   }
 
-  if (min_time != TimeDelta::Max() && min_time != TimeDelta::Zero()) {
-    cv_->wait_for(lock, std::chrono::nanoseconds(min_time.ToNanoseconds()));
-  } else {
-    cv_->wait(lock);
+  if (need_balance_) {
+    {
+      std::scoped_lock lock(running_mutex_, pending_mutex_);
+      BalanceNoLock();
+    }
+    need_balance_ = false;
   }
+
+  TimeDelta last_wait_time;
+  TimePoint now = TimePoint::Now();
+  std::unique_ptr<IdleTask> idle_task;
+  for (auto &running_group : running_groups_) {
+    auto runner = running_group.back(); // group栈顶会阻塞下面的taskRunner执行
+    auto task = runner->GetNext();
+    if (task) {
+      curr_group = running_group; // curr_group只会在当前线程获取，因此不需要加锁
+      local_runner = runner;
+      return task;
+    } else {
+      if (!idle_task) {
+        idle_task = running_group.front()->PopIdleTask();
+      }
+      last_wait_time = running_group.front()->GetNextTimeDelta(now);
+      if (min_wait_time_ > last_wait_time) {
+        min_wait_time_ = last_wait_time;
+        next_task_time_ = now + min_wait_time_;
+      }
+    }
+  }
+  if (!is_terminated_) {
+    return nullptr;
+  }
+  if (idle_task) {
+    auto wrapper_idle_task = std::make_unique<Task>(
+        MakeCopyable([task = std::move(idle_task), time = min_wait_time_]() {
+          IdleTask::IdleCbParam param = {
+              .did_time_out =  false,
+              .res_time =  time
+          };
+          task->Run(param);
+        }));
+    return wrapper_idle_task;
+  }
+  WaitFor(min_wait_time_);
   return nullptr;
 }
 
 bool Worker::IsTaskRunning() { return is_task_running; }
 
 // 返回值小于0表示失败
-int32_t Worker::WorkerKeyCreate(int32_t task_runner_id, std::function<void(void*)> destruct) {
-  std::lock_guard<std::mutex> lock(specific_mutex_);
-
+int32_t Worker::WorkerKeyCreate(int32_t task_runner_id,
+                                const std::function<void(void *)> &destruct) {
   auto map_it = worker_key_map_.find(task_runner_id);
   if (map_it == worker_key_map_.end()) {
     return -1;
@@ -297,8 +381,6 @@ int32_t Worker::WorkerKeyCreate(int32_t task_runner_id, std::function<void(void*
 }
 
 bool Worker::WorkerKeyDelete(int32_t task_runner_id, int32_t key) {
-  std::lock_guard<std::mutex> lock(specific_mutex_);
-
   auto map_it = worker_key_map_.find(task_runner_id);
   if (map_it == worker_key_map_.end()) {
     return false;
@@ -312,9 +394,7 @@ bool Worker::WorkerKeyDelete(int32_t task_runner_id, int32_t key) {
   return true;
 }
 
-bool Worker::WorkerSetSpecific(int32_t task_runner_id, int32_t key, void* p) {
-  std::lock_guard<std::mutex> lock(specific_mutex_);
-
+bool Worker::WorkerSetSpecific(int32_t task_runner_id, int32_t key, void *p) {
   auto map_it = specific_map_.find(task_runner_id);
   if (map_it == specific_map_.end()) {
     return false;
@@ -327,9 +407,7 @@ bool Worker::WorkerSetSpecific(int32_t task_runner_id, int32_t key, void* p) {
   return true;
 }
 
-void* Worker::WorkerGetSpecific(int32_t task_runner_id, int32_t key) {
-  std::lock_guard<std::mutex> lock(specific_mutex_);
-
+void *Worker::WorkerGetSpecific(int32_t task_runner_id, int32_t key) {
   auto map_it = specific_map_.find(task_runner_id);
   if (map_it == specific_map_.end()) {
     return nullptr;
@@ -342,8 +420,6 @@ void* Worker::WorkerGetSpecific(int32_t task_runner_id, int32_t key) {
 }
 
 void Worker::WorkerDestroySpecific(int32_t task_runner_id) {
-  std::lock_guard<std::mutex> lock(specific_mutex_);
-
   WorkerDestroySpecificNoLock(task_runner_id);
 }
 
@@ -357,7 +433,7 @@ void Worker::WorkerDestroySpecificNoLock(int32_t task_runner_id) {
   auto specific_array = specific_it->second;
   for (auto i = 0; i < specific_array.size(); ++i) {
     auto destruct = key_array[i].destruct;
-    void* data = specific_array[i];
+    void *data = specific_array[i];
     if (destruct != nullptr && data != nullptr) {
       destruct(data);
     }
@@ -367,8 +443,6 @@ void Worker::WorkerDestroySpecificNoLock(int32_t task_runner_id) {
 }
 
 void Worker::WorkerDestroySpecifics() {
-  std::lock_guard<std::mutex> lock(specific_mutex_);
-
   for (auto map_it = specific_map_.begin(); map_it != specific_map_.end();) {
     auto next = ++map_it;
     Worker::WorkerDestroySpecificNoLock(map_it->first);
@@ -378,8 +452,6 @@ void Worker::WorkerDestroySpecifics() {
 
 std::array<Worker::WorkerKey, Worker::kWorkerKeysMax> Worker::GetMovedSpecificKeys(
     int32_t task_runner_id) {
-  std::lock_guard<std::mutex> lock(specific_mutex_);
-
   auto it = worker_key_map_.find(task_runner_id);
   if (it != worker_key_map_.end()) {
     auto ret = std::move(it->second);
@@ -391,27 +463,21 @@ std::array<Worker::WorkerKey, Worker::kWorkerKeysMax> Worker::GetMovedSpecificKe
 
 void Worker::UpdateSpecificKeys(int32_t task_runner_id,
                                 std::array<WorkerKey, Worker::kWorkerKeysMax> array) {
-  std::lock_guard<std::mutex> lock(specific_mutex_);
-
   worker_key_map_[task_runner_id] = std::move(array);  // insert or update
 }
 
-std::array<void*, Worker::kWorkerKeysMax> Worker::GetMovedSpecific(int32_t task_runner_id) {
-  std::lock_guard<std::mutex> lock(specific_mutex_);
-
+std::array<void *, Worker::kWorkerKeysMax> Worker::GetMovedSpecific(int32_t task_runner_id) {
   auto it = specific_map_.find(task_runner_id);
   if (it != specific_map_.end()) {
     auto ret = it->second;
     specific_map_.erase(it);
     return ret;
   }
-  return std::array<void*, Worker::kWorkerKeysMax>();
+  return std::array<void *, Worker::kWorkerKeysMax>();
 }
 
 void Worker::UpdateSpecific(int32_t task_runner_id,
-                            std::array<void*, Worker::kWorkerKeysMax> array) {
-  std::lock_guard<std::mutex> lock(specific_mutex_);
-
+                            std::array<void *, Worker::kWorkerKeysMax> array) {
   specific_map_[task_runner_id] = array;  // insert or update
 }
 

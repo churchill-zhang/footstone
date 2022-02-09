@@ -143,10 +143,10 @@ struct std::hash<footstone::unicode_string_view> {
 
 #if !defined(__cpp_char8_t) && (defined(__GLIBC__))
 template <>
-struct std::hash<footstone::base::unicode_string_view::u8string>
-  : public std::__hash_base<size_t, footstone::base::unicode_string_view::u8string> {
+struct std::hash<footstone::stringview::unicode_string_view::u8string>
+  : public std::__hash_base<size_t, footstone::stringview::unicode_string_view::u8string> {
   std::size_t operator()(
-    const footstone::base::unicode_string_view::u8string& value) const noexcept;
+    const footstone::stringview::unicode_string_view::u8string& value) const noexcept;
 };
 #endif
 

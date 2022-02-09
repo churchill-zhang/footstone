@@ -10,7 +10,7 @@
 namespace footstone {
 inline namespace timer {
 
-class BaseTimer {
+class BaseTimer: public std::enable_shared_from_this<BaseTimer> {
  public:
   using TaskRunner = runner::TaskRunner;
   using TimePoint = time::TimePoint;

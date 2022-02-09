@@ -1,6 +1,6 @@
+message(STATUS "FOOTSTONE_PATH = ${FOOTSTONE_PATH}/include")
 
-
-include_directories(${FOOTSTONE_SOURCE_DIR})
+include_directories(${FOOTSTONE_PATH}/include)
 
 #link_libraries(${CMAKE_SOURCE_DIR}/lib/platform/win)
 

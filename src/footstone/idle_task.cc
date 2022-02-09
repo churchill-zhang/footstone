@@ -20,19 +20,20 @@
  *
  */
 
-#include "footstone/task.h"
+#include "footstone/idle_task.h"
 
 #include <utility>
 
-std::atomic<uint32_t> g_next_task_id{0};
+std::atomic<uint32_t> g_next_idle_task_id{0};
 
 namespace footstone {
 inline namespace runner {
 
-Task::Task() : Task(nullptr) {}
+IdleTask::IdleTask() :
+    id_(g_next_idle_task_id.fetch_add(1)), unit_(nullptr) {}
 
-Task::Task(std::function<void()> exec_unit) : unit_(std::move(exec_unit)) {
-  id_ = g_next_task_id.fetch_add(1);
+IdleTask::IdleTask(std::function<void(const IdleCbParam &)> unit) :
+    id_(g_next_idle_task_id.fetch_add(1)), unit_(std::move(unit)) {
 }
 
 } // namespace runner

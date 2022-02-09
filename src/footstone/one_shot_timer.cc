@@ -1,12 +1,14 @@
 #include "footstone/one_shot_timer.h"
 
+#include <utility>
+
 #include "footstone/logging.h"
 
 namespace footstone {
 inline namespace timer {
 
 OneShotTimer::OneShotTimer(std::shared_ptr<TaskRunner> task_runner)
-    :BaseTimer(task_runner) {}
+    :BaseTimer(std::move(task_runner)) {}
 
 OneShotTimer::~OneShotTimer() = default;
 

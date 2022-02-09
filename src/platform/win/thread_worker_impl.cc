@@ -1,33 +1,11 @@
 // Copyright (c) 2020 Tencent Corporation. All rights reserved.
 
-#define BASE_USED_ON_EMBEDDER
-
-#include "footstone/thread.h"
+#include "footstone/thread_worker_impl.h"
 
 #include <windows.h>
 
-#include <string>
-#include <thread>
-
 namespace footstone {
 inline namespace runner {
-
-Thread::Thread(const std::string& name) : name_(name) {}
-
-void Thread::Start() {
-  thread_ = std::make_unique<std::thread>([this]() -> void {
-    SetCurrentThreadName(name_);
-    Run();
-  });
-}
-
-Thread::~Thread() {}
-
-void Thread::Join() {
-  if (thread_->joinable()) {
-    thread_->join();
-  }
-}
 
 // The information on how to set the thread name comes from
 // a MSDN article: http://msdn2.microsoft.com/en-us/library/xcb2z8hs.aspx
@@ -39,7 +17,7 @@ typedef struct tagTHREADNAME_INFO {
   DWORD dwFlags;     // Reserved for future use, must be zero.
 } THREADNAME_INFO;
 
-void Thread::SetCurrentThreadName(const std::string& name) {
+void ThreadWorkerImpl::SetName(const std::string& name) {
   if (name == "") {
     return;
   }

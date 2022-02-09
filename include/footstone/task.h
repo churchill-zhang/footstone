@@ -22,7 +22,7 @@ class Task {
   }
 
  private:
-  std::atomic<uint32_t> id_;
+  std::atomic<uint32_t> id_{};
   std::function<void()> unit_;  // A unit of work to be processed
 };
 
